@@ -1,0 +1,260 @@
+0. AUTH – LOGIN
+
+POST /auth/login
+
+Body:
+
+{
+  "username": "your_user",
+  "password": "your_password"
+}
+
+Expected:
+
+{
+  "access_token": "TOKEN",
+  "token_type": "bearer"
+}
+
+Use:
+
+Authorize → Bearer TOKEN
+
+
+
+
+
+
+
+1. Create Invoice – Valid Input
+
+Endpoint
+POST /invoices/
+
+Body
+
+{
+  "customer_id": 1,
+  "tax": 100,
+  "discount": 50,
+  "due_date": "2026-01-01T00:00:00",
+  "items": [
+    {
+      "product_name": "Laptop",
+      "quantity": 1,
+      "price": 50000
+    }
+  ]
+}
+
+Expected
+
+Status: 200
+total_amount = 50050
+status = "PENDING"
+2. Create Invoice – Negative Total
+
+Body
+
+{
+  "customer_id": 1,
+  "tax": 0,
+  "discount": 999999,
+  "due_date": "2026-01-01T00:00:00",
+  "items": [
+    {
+      "product_name": "Test",
+      "quantity": 1,
+      "price": 100
+    }
+  ]
+}
+
+Expected
+
+Status: 400
+{
+  "detail": "Total amount must be greater than 0"
+}
+3. Create Invoice – Past Due Date
+
+Body
+
+{
+  "customer_id": 1,
+  "tax": 100,
+  "discount": 50,
+  "due_date": "2020-01-01T00:00:00",
+  "items": [
+    {
+      "product_name": "Laptop",
+      "quantity": 1,
+      "price": 50000
+    }
+  ]
+}
+
+Expected
+
+Status: 422
+Message: "Due date must be in the future"
+4. Create Invoice – Invalid Item Quantity
+
+Body
+
+{
+  "customer_id": 1,
+  "tax": 100,
+  "discount": 50,
+  "due_date": "2026-01-01T00:00:00",
+  "items": [
+    {
+      "product_name": "Laptop",
+      "quantity": 0,
+      "price": 50000
+    }
+  ]
+}
+
+Expected
+
+Status: 422
+Message: "Must be greater than 0"
+PAYMENT TEST CASES
+5. Pay Invoice – Valid Full Payment
+
+Endpoint
+POST /payments/pay/1
+
+Body
+
+{
+  "amount": 50050,
+  "payment_method": "UPI"
+}
+
+Expected
+
+Status: 200
+invoice.status = "PAID"
+6. Pay Invoice – Partial Payment
+
+Body
+
+{
+  "amount": 20000,
+  "payment_method": "CARD"
+}
+
+Expected
+
+Status: 200
+invoice.status = "PARTIAL"
+7. Pay Invoice – Overpayment
+
+Body
+
+{
+  "amount": 999999,
+  "payment_method": "UPI"
+}
+
+Expected
+
+Status: 400
+{
+  "detail": "Payment exceeds invoice amount"
+}
+8. Pay Invoice – Duplicate Payment
+
+Condition
+Same amount already paid once
+
+Expected
+
+Status: 400
+{
+  "detail": "Duplicate payment detected"
+}
+9. Pay Invoice – Invalid Payment Method
+
+Body
+
+{
+  "amount": 1000,
+  "payment_method": "BITCOIN"
+}
+
+Expected
+
+Status: 422
+Enum validation error
+10. Pay Invoice – Negative Amount
+
+Body
+
+{
+  "amount": -100,
+  "payment_method": "UPI"
+}
+
+Expected
+
+Status: 422
+Message: "Amount must be greater than 0"
+FILTERING TEST CASES
+11. Get Invoices – Status Filter
+
+Endpoint
+GET /invoices?status=PAID
+
+Expected
+
+Status: 200
+Only PAID invoices returned
+12. Get Invoices – Due Date Filter
+
+Endpoint
+GET /invoices?due_date_before=2026-01-01
+
+Expected
+
+Status: 200
+Only invoices before date
+PAGINATION TEST CASES
+13. Pagination – Page 1
+
+Endpoint
+GET /invoices?page=1&limit=2
+
+Expected
+
+{
+  "total": <count>,
+  "page": 1,
+  "limit": 2,
+  "data": [...]
+}
+14. Pagination – Page 2
+
+Endpoint
+GET /invoices?page=2&limit=2
+
+Expected
+
+Next set of records
+SUMMARY TEST CASE
+15. Invoice Summary
+
+Endpoint
+GET /invoices/1/summary
+
+Expected
+
+{
+  "invoice_id": 1,
+  "total_amount": 50050,
+  "total_paid": 20000,
+  "balance": 30050,
+  "status": "PARTIAL"
+}
